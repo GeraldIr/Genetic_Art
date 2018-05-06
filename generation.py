@@ -1,31 +1,43 @@
 #Written by Gerald Walter Irsiegler
 
-import random
-import string
-from numpy import random as pyr
+
 import math
-import controller
+import values
+import numpy as np
 
-current_weights;
-current_biases;
 
-def setup_weights(individual: list):
-    global current_weights;
-    global current_biases;
+class Network(object):
 
-    current_biases[0] = individual[1][0:controller.number_of_inputs-1]
+    def __init__(self, sizes):
+        self.num_layers = len(sizes)
+        self.sizes = sizes
+        self.biases = [np.random.randn(y, 1) for y in sizes[1:]]
+        self.weights = [np.random.randn(y, x)
+                        for x, y in zip(sizes[:-1], sizes[1:])]
 
-    for i in range(0, controller.number_of_hidden_layers):
-        current_biases[i+1] = individual[1][controller.number_of_inputs+(i*controller.size_of_hidden_layers):controller.number_of_inputs+(i*controller.size_of_hidden_layers)+controller.size_of_hidden_layers-1];
+    def feedforward(self, a):
+        """Return the output of the network if ``a`` is input."""
+        for b, w in zip(self.biases, self.weights):
+            a = sigmoid(np.dot(w, a)+b)
+        return a
 
-    current_biases [controller.number_of_hidden_layers+1] = individual[1][-controller.number_of_outputs:];
 
+network = Network(values.sizes)
 
 
 def get_pixel_value(x: int, y: int):
-    inputs = [0] * controller.number_of_inputs;
-    inputs[(x*controller.picture_size_x)+y] = 1;
+    inputs = [0] * values.number_of_inputs
+    # inputs[(x*values.picture_size_x)+y] = 1
+
+    number = values.picture_size_x*x + y
+    for x in range(len(bin(number))-2):
+        inputs[x] = int(bin(number)[x+2])
+
+    a = network.feedforward(inputs)
+    return a
     
 
-def sigmoid(x):
-    return 1 / (1 + math.exp(-x))
+def sigmoid(z):
+    """The sigmoid function."""
+    return 1.0/(1.0+np.exp(-z))
+
