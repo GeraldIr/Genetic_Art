@@ -24,6 +24,7 @@ class Network(object):
 
 network = Network(values.sizes)
 
+full_pic_network = Network(values.fp_sizes)
 
 def get_pixel_value(x: int, y: int):
     inputs = [0] * values.number_of_inputs
@@ -36,6 +37,10 @@ def get_pixel_value(x: int, y: int):
     a = network.feedforward(inputs)
     return a
     
+
+def get_pixel_values_picture():
+    a = full_pic_network.feedforward(values.input_fp)
+    return a
 
 def sigmoid(z):
     """The sigmoid function."""

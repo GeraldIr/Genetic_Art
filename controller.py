@@ -31,5 +31,40 @@ def generate_visual(individual):
     im.save("hello.jpg", "JPEG")
     return -1
 
-generate_visual(1)
+
+def generate_visual_fp_bw(individual):
+    im = Image.new("L", values.picture_size, color=0)
+    pixels = im.load()
+    value = generation.get_pixel_values_picture()
+
+    for x in range(values.picture_size_x):
+        for y in range(values.picture_size_y):
+            index = values.picture_size_x * x + y
+            print(int(value[index]*255))
+            pixels[x, y] = int(value[index]*255)
+
+    im.save("hello.jpg", "JPEG")
+    return -1
+
+
+def generate_visual_fp(individual):
+    im = Image.new("RGB", values.picture_size, color=0)
+    pixels = im.load()
+    value = generation.get_pixel_values_picture()
+
+    for x in range(values.picture_size_x):
+        for y in range(values.picture_size_y):
+            ir = (values.picture_size_x * x + y)
+            ig = (values.picture_size_x * x + y)+(values.picture_size_x*values.picture_size_y)
+            ib = (values.picture_size_x * x + y)+(2*values.picture_size_x*values.picture_size_y)
+
+            print(int(value[ir]*255))
+            pixels[x, y] = (int(value[ir]*255), int(value[ig]*255), int(value[ib]*255))
+
+
+    im.save("hello.jpg", "JPEG")
+    return -1
+
+# generate_visual(1)
+generate_visual_fp(1)
 # test()
