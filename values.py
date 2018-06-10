@@ -1,7 +1,7 @@
 import math
 import numpy as np
 
-size = 64
+size = 2
 picture_size = (size, size)
 picture_size_x = picture_size[0]
 picture_size_y = picture_size[1]
@@ -11,6 +11,6 @@ fp_number_of_outputs = picture_size_x * picture_size_y * color_channels
 number_of_outputs = color_channels
 number_of_hidden_layers = 3
 size_of_hidden_layers = 16
-input_fp = 0
+input_fp = 1
 sizes = [number_of_inputs, 16, number_of_outputs]
-fp_sizes = [1, 16, fp_number_of_outputs]
+fp_sizes = [1, fp_number_of_outputs, fp_number_of_outputs]
