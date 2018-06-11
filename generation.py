@@ -22,19 +22,27 @@ class Network(object):
             a = sigmoid(np.dot(w, a)+b)
         return a
 
-    def mutate(self):
-        for b in self.biases:
-            if pyr.rand() < 0.1:
-                if pyr.rand() < 0.5:
-                    b += (pyr.rand() - 0.5) / 10
-                else:
-                    b *= 1 + ((pyr.rand() - 0.5) / 10)
-        for w in self.weights:
-            if pyr.rand() < 0.5:
-                if pyr.rand() < 0.5:
-                    w += (pyr.rand() - 0.5) / 10
-                else:
-                    w *= 1 + ((pyr.rand() - 0.5) / 10)
+    def mutate(self, chance, size):
+        for b in range(0, len(self.biases)):
+            for bx in range(0, len(self.biases[0])):
+                if pyr.rand() < chance:
+                    r = pyr.rand()
+                    if 0 <= r < 0.4:
+                        self.biases[b][bx] += (pyr.rand() - 0.5) / size*2
+                    elif 0.4 <= r < 0.98:
+                        self.biases[b][bx] *= 1 + ((pyr.rand() - 0.5) / size*2)
+                    else:
+                        self.biases[b][bx] = 1-b;
+        for w in range(0, len(self.weights)):
+            for wx in range(0, len(self.weights[0])):
+                if pyr.rand() < chance:
+                    r = pyr.rand()
+                    if 0 <= r < 0.4:
+                        self.weights[w][wx] += (pyr.rand() - 0.5) / size * 2
+                    elif 0.4 <= r < 0.98:
+                        self.weights[w][wx] *= 1 + ((pyr.rand() - 0.5) / size * 2)
+                    else:
+                        self.weights[w][wx] = 1 - b;
 
     def crossover(self, other):
         child1 = Network(values.fp_sizes)
@@ -42,7 +50,7 @@ class Network(object):
 
         for x in range(0, int(len(self.weights))):
             for y in range(0, len(self.weights[0])):
-                if pyr.rand() < 0.5:
+                if pyr.rand() < 0.6:
                     child1.weights[x][y] = self.weights[x][y]
                     child2.weights[x][y] = other.weights[x][y]
                 else:
@@ -51,7 +59,7 @@ class Network(object):
 
         for x in range(0, int(len(self.biases))):
             for y in range(0, int(len(self.biases[0]))):
-                if pyr.rand() < 0.5:
+                if pyr.rand() < 0.6:
                     child1.biases[x][y] = self.biases[x][y]
                     child2.biases[x][y] = other.biases[x][y]
                 else:
@@ -119,3 +127,6 @@ def get_pixel_values_picture(individual: Network):
 def sigmoid(z):
     """The sigmoid function."""
     return 1.0/(1.0+np.exp(-z))
+
+
+

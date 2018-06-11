@@ -9,32 +9,42 @@ import values
 from PIL import Image as pim
 from PIL import ImageTk as pik
 from tkinter import *
-from tkinter import simpledialog
+from tkinter import simpledialog, filedialog
 import matplotlib.pyplot as plt
 
-
-# Global Variables
-size_of_first_generation = 10
-max_generation_size = 15
-number_of_generations = 250
-chance_of_mutation_per_individual = 0.4
-chance_of_crossover = 0.7
-survival_probability_constant = 0.5  # don't mess with this, anything else than 0.5 crashes the program, fix soon
-
-# Hopefully soon to be non global values
-first_generation = []
-new_generation = []
 
 # Canvas stuff
 master = Tk()
 canvas = Canvas(master, width=800, height=800)
 canvas.pack()
 
+
+# Global Variables
+size_of_first_generation = 10
+max_generation_size = 20
+number_of_generations = simpledialog.askinteger("# of Generations", "How many generations should be simulated?")
+chance_of_mutation_per_individual = 0.35
+chance_of_crossover = 0.7
+survival_probability_constant = 0.5  # don't mess with this, anything else than 0.5 crashes the program, fix soon
+
+# gene mutation
+gene_mutation_chance = 0.1
+gene_mutation_size = 10 # inverse, the bigger the smaller
+max_gene_mutation_size = 3
+
+# Hopefully soon to be non global values
+first_generation = []
+new_generation = []
+
+
+
 # Control Variables
 avg_fit = []
 
 # Mode
-mode = input("Manual Mode (m) or Automatic Mode (a): ")
+mode = ""
+optimum_picture = pim.new("RGB", values.picture_size, color=0)
+
 
 def main_string(opt):
     init(opt)
@@ -52,6 +62,7 @@ def main_string(opt):
 
 
 def main():
+    mode_choice()
     init()
     sort_generation_by_fitness(first_generation)
     print(get_rating_list(first_generation))
@@ -61,10 +72,11 @@ def main():
         set_new_generation(get_next_generation(new_generation))
         print(get_fitness_list(new_generation))
         save_new_generation(x)
-        if mode == "a":
+        if mode != "m":
             draw_new_generation()
         avg = get_average_fitness()
         avg_fit.append(avg)
+        # adjust_mutation_parameters()
     analysis()
 
 
@@ -73,20 +85,65 @@ def init():
     first_generation = generate_first_generation()
 
 
+def get_average_improvement_last_ten():
+    avg_list = get_improvement_list()
+    avg = 0
+    if len(avg_list) < 10:
+        return get_average_improvement()
+    for x in range(0, 9):
+        avg += avg_list[len(avg_list)-(x+1)]
+    return avg/10
+
+
+def adjust_mutation_parameters():
+    global chance_of_mutation_per_individual
+    global gene_mutation_chance
+    global gene_mutation_size
+
+    ten_avg = get_average_improvement_last_ten()
+
+    if ten_avg < get_average_improvement():
+        gene_mutation_chance += 0.001
+    else:
+        gene_mutation_chance -= 0.001
+
+    chance_of_mutation_per_individual = 1 - get_average_fitness()
+    gene_mutation_size = (1 - get_average_fitness()) * 20
+
+
+
 def analysis():
     print("--------------------------------")
     print("------------ANALYSIS------------")
     print(get_average_improvement())
+
     plt.plot(avg_fit)
     plt.ylabel("Fitness")
     plt.xlabel("Generation")
     plt.show()
 
+    plt.plot(get_improvement_list())
+    plt.ylabel("Improvement")
+    plt.xlabel("Generation")
+    plt.show()
 
 
-def set_new_generation(generation: list):
+def mode_choice():
+    global mode
+    global optimum_picture
+    mode = simpledialog.askstring("Mode Choice", "Test (t), Manual (m), Red (r), Picture (p) or Silhouettet (s): ")
+    if mode == "p" or mode == "s":
+        path = filedialog.askopenfilename(initialdir = "C:\home\project\Genetic_Art\Pictures",title = "Select optimal picture",filetypes = (("jpeg files","*.jpg"),("all files","*.*")))
+        optimum_picture = pim.open(path)
+        optimum_picture = optimum_picture.resize(values.picture_size)
+    if mode == "t":
+        test()
+        sys.exit(1)
+
+
+def set_new_generation(gen: list):
     global new_generation
-    new_generation = generation
+    new_generation = gen
 
 
 def generate_first_generation():
@@ -106,6 +163,8 @@ def get_improvement_list():
 def get_average_improvement():
     avg = 0
     improvements = get_improvement_list()
+    if len(improvements) == 0:
+        return 0
     for x in improvements:
         avg += x
     avg /= len(improvements)
@@ -149,8 +208,12 @@ def get_average_fitness():
 def get_fitness(individual: generation.Network):
     if mode == "m":
         return get_fitness_manual(individual)
-    elif mode == "a":
-        return get_fitness_automatic(individual)
+    elif mode == "r":
+        return get_fitness_automatic_red(individual)
+    elif mode == "p":
+        return get_fitness_automatic_picture(individual)
+    elif mode == "s":
+        return get_fitness_automatic_silhouette(individual)
     else:
         sys.exit(1)
 
@@ -162,7 +225,43 @@ def get_fitness_manual(individual: generation.Network):
     return fitness;
 
 
-def get_fitness_automatic(individual: generation.Network):
+def get_fitness_automatic_picture(individual: generation.Network):
+    ind_pim = generate_visual_fp(individual)
+    diff_r = 0
+    diff_g = 0
+    diff_b = 0
+    pixels_ind = ind_pim.load()
+    pixels_opt = optimum_picture.load()
+    for x in range(0, values.picture_size_x):
+        for y in range(0, values.picture_size_y):
+            diff_r += abs(pixels_opt[x, y][0] - pixels_ind[x, y][0])
+            diff_g += abs(pixels_opt[x, y][1] - pixels_ind[x, y][1])
+            diff_b += abs(pixels_opt[x, y][2] - pixels_ind[x, y][2])
+
+    diff_r /= values.size ** 2
+    diff_g /= values.size ** 2
+    diff_b /= values.size ** 2
+
+    return 1 - (((diff_r + diff_g + diff_b) / 3) / 255)
+
+
+def get_fitness_automatic_silhouette(individual: generation.Network):
+    ind_pim = generate_visual_fp(individual)
+    diff = 0
+    pixels_ind = ind_pim.load()
+    pixels_opt = optimum_picture.load()
+    for x in range(0, values.picture_size_x):
+        for y in range(0, values.picture_size_y):
+            avg_ind = (pixels_ind[x, y][0] + pixels_ind[x, y][1] + pixels_ind[x, y][2]) / 3
+            avg_opt = (pixels_opt[x, y][0] + pixels_opt[x, y][1] + pixels_opt[x, y][2]) / 3
+            diff += abs(avg_opt - avg_ind)
+
+    diff /= values.size**2
+
+    return 1 - (diff / 255)
+
+
+def get_fitness_automatic_red(individual: generation.Network):
     redness = 0
     greenness = 0
     blueness = 0
@@ -184,27 +283,25 @@ def get_fitness_automatic(individual: generation.Network):
     return generation.sigmoid(fitness)
 
 
-
-def mutate_generation_string(generation: list):
-    for x in range(0, len(generation)):
-        randomnumber = random.randint(0, 100000)/100000
-        if randomnumber <= chance_of_mutation_per_individual:
-            generation[x] = mutate_single_individual_string(generation[x])
+def mutate_generation_string(gen: list):
+    for x in range(0, len(gen)):
+        if pyr.rand() <= chance_of_mutation_per_individual:
+            gen[x] = mutate_single_individual_string(gen[x])
 
 
 def draw_new_generation():
-    pilimg = pim.open("Latest.jpg")
-    pilimg = pilimg.resize((800, 800))
-    img = pik.PhotoImage(pilimg)
+    pil_img = pim.open("Latest.jpg")
+    pil_img = pil_img.resize((800, 800))
+    img = pik.PhotoImage(pil_img)
 
     canvas.create_image(0, 0, anchor=NW, image=img)
     master.update()
 
 
 def draw_individual(individual: generation.Network):
-    pilimg = generate_visual_fp(individual)
-    pilimg = pilimg.resize((800, 800))
-    img = pik.PhotoImage(pilimg)
+    pil_img = generate_visual_fp(individual)
+    pil_img = pil_img.resize((800, 800))
+    img = pik.PhotoImage(pil_img)
 
     canvas.create_image(0, 0, anchor=NW, image=img)
     master.update()
@@ -223,18 +320,18 @@ def get_fitness_list(gen: list):
     return fitnesslist
 
 
-def get_diversity_list(generation: list):
+def get_diversity_list(gen: list):
     diversity_list = []
-    for x in range(0, len(generation)):
-        diversity_list.append(get_diversity(generation[x]))
+    for x in range(0, len(gen)):
+        diversity_list.append(get_diversity(gen[x]))
     return diversity_list
 
 
-def get_rating_list(generation: list):
-    ratinglist = []
-    for x in range(0, len(generation)):
-        ratinglist.append(get_rating(generation[x]))
-    return ratinglist
+def get_rating_list(gen: list):
+    rating_list = []
+    for x in range(0, len(gen)):
+        rating_list.append(get_rating(gen[x]))
+    return rating_list
 
 
 def get_rating_string(individual: str):
@@ -346,7 +443,7 @@ def crossover(generation: list):
 
 
 def mutate_single_individual(individual: generation.Network):
-    individual.mutate()
+    individual.mutate(gene_mutation_chance, gene_mutation_size)
     return individual
 
 
@@ -403,5 +500,14 @@ def generate_visual_fp(individual: generation.Network):
 
     return im
 
+
+def test():
+    print("------------TESTING-------------")
+    ind = generation.Network(values.fp_sizes)
+    draw_individual(ind)
+    input()
+    ind.mutate(gene_mutation_chance, gene_mutation_size)
+    draw_individual(ind)
+    input()
 
 main()
